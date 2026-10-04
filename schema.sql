@@ -86,3 +86,15 @@ CREATE TABLE iocs
 )
 ENGINE = ReplacingMergeTree(version)
 ORDER BY (indicator, type);
+
+-- ClickHouse minstance to create the telemetry table for pipeline metrics.
+CREATE TABLE IF NOT EXISTS soc_dashboard.pipeline_health
+(
+    snapshot_time   DateTime64(3)   DEFAULT now64(3),
+    events_per_sec  Float64,
+    lag_seconds     Float64,
+    error_count     UInt64,
+    buffer_size     UInt64
+)
+ENGINE = MergeTree
+ORDER BY snapshot_time;
