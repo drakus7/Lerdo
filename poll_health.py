@@ -1,5 +1,6 @@
 import requests
 import time
+import datetime
 import clickhouse_connect
 
 VECTOR_METRICS_URL = "http://localhost:9598/metrics"
@@ -32,8 +33,6 @@ def main():
             # Parse sent events and errors specifically for the ClickHouse sink
             sent_total = parse_vector_metric(text, "vector_component_sent_events_total", "clickhouse_raw_events")
             errors_total = parse_vector_metric(text, "vector_component_errors_total", "clickhouse_raw_events")
-            
-            # Fallback or buffer size metric if present, or default to 0
             buffer_size = parse_vector_metric(text, "vector_buffer_sent_events_total", "clickhouse_raw_events")
 
             eps = get_eps(prev_sent, sent_total)
@@ -45,9 +44,12 @@ def main():
             )
             lag_seconds = float(lag_result.result_rows[0][0]) if lag_result.result_rows and lag_result.result_rows[0][0] is not None else 0.0
 
+            # Use a datetime object for DateTime64 compatibility
+            now_dt = datetime.datetime.now()
+
             client.insert(
                 "pipeline_health",
-                [[time.time(), eps, lag_seconds, int(errors_total), int(buffer_size)]],
+                [[now_dt, eps, lag_seconds, int(errors_total), int(buffer_size)]],
                 column_names=["snapshot_time", "events_per_sec", "lag_seconds", "error_count", "buffer_size"],
             )
 
