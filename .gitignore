@@ -11,6 +11,8 @@ data/processed/
 mlruns/
 *.egg-info/
 .DS_Store
+.vector_data/
+logs/
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
