@@ -1,0 +1,31 @@
+# Source - tail the gen output file
+[sources.soc_generator]
+type = "file"
+include = ["./logs/events.jsonl"]
+read_from = "end"
+
+# Transform - parse JSON lines into structured fields
+[transforms.parse_events]
+type = "remap"
+inputs = ["soc_generator"]
+source = '''
+. = parse_json!(.message)
+'''
+
+# Sink - write parsed events into clickhouse
+[sinks.clickhouse_raw_events]
+type = "clickhouse"
+inputs = ["parse_events"]
+endpoint = "http://localhost:8123"
+database = "soc_dashboard"
+table = "raw_events"
+skip_unknown_fields = true
+
+# Internal metrics - vector monitoring itself
+[sources.vector_metrics]
+type = "internal_metrics"
+
+[sinks.prometheus_exporter]
+type = "prometheus_exporter"
+inputs = ["vector_metrics]
+address = "0.0.0.0:9598"
