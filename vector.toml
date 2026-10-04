@@ -1,3 +1,6 @@
+#Global vector config 
+data_dir = "./.vector_data"
+
 # Source - tail the gen output file
 [sources.soc_generator]
 type = "file"
@@ -27,5 +30,5 @@ type = "internal_metrics"
 
 [sinks.prometheus_exporter]
 type = "prometheus_exporter"
-inputs = ["vector_metrics]
+inputs = ["vector_metrics"]
 address = "0.0.0.0:9598"
