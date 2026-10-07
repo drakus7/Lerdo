@@ -7,6 +7,7 @@ router = APIRouter(prefix="/alerts",tags=["alerts"])
 
 @router.get("",response_model=list[Alert])
 async def list_alerts(
+    #every 60 secs
     severity:Optional[str] = Query(None,description="Filter by severity"),
     status:Optional[str] = Query(None,description="Filter by status"),
     limit: int = Query(50,le=500)
