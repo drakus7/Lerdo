@@ -10,7 +10,7 @@ USE soc_dashboard;
 -- Everything lands here first, from Vector.
 -- High volume, append-only, short-to-medium retention.
 -- ============================================
-CREATE TABLE raw_events
+CREATE TABLE IF NOT EXISTS raw_events
 (
     event_id        UUID            DEFAULT generateUUIDv4(),
     timestamp       DateTime64(3)   DEFAULT now64(3),
@@ -30,7 +30,7 @@ SETTINGS index_granularity = 8192;
 -- Lower volume, needs frequent UPDATEs (status, assigned_analyst, verdict) —
 -- ClickHouse MergeTree doesn't do cheap UPDATEs, so use ReplacingMergeTree.
 -- ============================================
-CREATE TABLE alerts
+CREATE TABLE IF NOT EXISTS alerts
 (
     id                  UUID            DEFAULT generateUUIDv4(),
     timestamp           DateTime64(3),
@@ -56,7 +56,7 @@ SETTINGS index_granularity = 8192;
 -- assets
 -- Slowly-changing reference data. Small table, updated occasionally.
 -- ============================================
-CREATE TABLE assets
+CREATE TABLE IF NOT EXISTS assets
 (
     id                  UUID            DEFAULT generateUUIDv4(),
     hostname            String,
@@ -74,7 +74,7 @@ ORDER BY (id);
 -- Threat intel enrichment cache. Updated on each new lookup;
 -- ReplacingMergeTree lets you re-insert the same indicator with fresh data.
 -- ============================================
-CREATE TABLE iocs
+CREATE TABLE IF NOT EXISTS iocs
 (
     indicator           String,                    -- IP, domain, or hash value
     type                 Enum8('ip' = 1, 'domain' = 2, 'hash' = 3),
