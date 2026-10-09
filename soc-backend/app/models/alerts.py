@@ -2,6 +2,7 @@ from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
 from enum import Enum
+from uuid import UUID
 
 class Severity(str, Enum):
     low = "low"
@@ -17,7 +18,7 @@ class AlertStatus(str, Enum):
 
 class Alert(BaseModel):
     """What an alert looks like when returned to the client."""
-    id: str
+    id: UUID
     timestamp: datetime
     severity: Severity
     category: str

@@ -12,4 +12,4 @@ async def get_client() -> AsyncClient:
     global _client
     if _client is None:
         _client = await clickhouse_connect.get_async_client(host=CH_HOST,port=CH_PORT,database=CH_DATABASE)
-        return _client
+    return _client

@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Query
 from app.db import get_client
 from app.models.alerts import Alert, AlertUpdateStatus, AlertAssign
 from typing import Optional
+from uuid import UUID
 
 router = APIRouter(prefix="/alerts",tags=["alerts"])
 
@@ -40,67 +41,52 @@ async def list_alerts(
     return [dict(zip(columns, row)) for row in rows]
 
 @router.get("/{alert_id}",response_model=Alert)
-async def get_alert(alert_id:str):
+async def get_alert(alert_id:UUID):
     client = await get_client()
 
     query = """
         SELECT id, timestamp, severity, category, mitre_technique,
                status, assigned_analyst, rule_name
         FROM alerts FINAL
-        WHERE id = {alert_id:String}
+        WHERE id = {alert_id:UUID}
         LIMIT 1
     """
-    result = await client.query(query,parameters={alert_id:alert_id})
+    result = await client.query(query,parameters={"alert_id": alert_id})
 
     if not result.result_rows:
         raise HTTPException(status_code=404, detail="Alert not found")
     return dict(zip(result.column_names,result.result_rows[0]))
 
-@router.patch("/{alert_id}/status")
-async def update_alert_status(alert_id: str, body: AlertUpdateStatus):
-  
+async def _bump_alert(alert_id: UUID, replace: str, params: dict):
+    # Copy the latest row with a higher version entirely inside ClickHouse.
+    # Round-tripping DateTime64 columns through Python shifts them by the
+    # local UTC offset on every update, so never re-insert fetched rows.
     client = await get_client()
 
     existing = await client.query(
-        "SELECT * FROM alerts FINAL WHERE id = {id:String} LIMIT 1",
+        "SELECT 1 FROM alerts FINAL WHERE id = {id:UUID} LIMIT 1",
         parameters={"id": alert_id},
     )
     if not existing.result_rows:
         raise HTTPException(status_code=404, detail="Alert not found")
 
-    row = dict(zip(existing.column_names, existing.result_rows[0]))
-    row["status"] = body.status.value
-    row["version"] = row["version"] + 1
-
-    await client.insert(
-        "alerts",
-        [list(row.values())],
-        column_names=list(row.keys()),
+    await client.command(
+        f"""
+        INSERT INTO alerts
+        SELECT * REPLACE ({replace}, version + 1 AS version, now64(3) AS updated_at)
+        FROM alerts FINAL
+        WHERE id = {{id:UUID}}
+        """,
+        parameters={"id": alert_id, **params},
     )
 
+@router.patch("/{alert_id}/status")
+async def update_alert_status(alert_id: UUID, body: AlertUpdateStatus):
+    await _bump_alert(alert_id, "{status:String} AS status", {"status": body.status.value})
     return {"id": alert_id, "status": body.status.value}
 
 
 @router.patch("/{alert_id}/assign")
-async def assign_alert(alert_id: str, body: AlertAssign):
-    
-    client = await get_client()
-
-    existing = await client.query(
-        "SELECT * FROM alerts FINAL WHERE id = {id:String} LIMIT 1",
-        parameters={"id": alert_id},
-    )
-    if not existing.result_rows:
-        raise HTTPException(status_code=404, detail="Alert not found")
-
-    row = dict(zip(existing.column_names, existing.result_rows[0]))
-    row["assigned_analyst"] = body.assigned_analyst
-    row["version"] = row["version"] + 1
-
-    await client.insert(
-        "alerts",
-        [list(row.values())],
-        column_names=list(row.keys()),
-    )
-
+async def assign_alert(alert_id: UUID, body: AlertAssign):
+    await _bump_alert(alert_id, "{analyst:String} AS assigned_analyst", {"analyst": body.assigned_analyst})
     return {"id": alert_id, "assigned_analyst": body.assigned_analyst}

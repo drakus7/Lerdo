@@ -9,7 +9,7 @@ async def pipeline_health():
 
     result = await client.query(
         """
-        SELECT snapshot_time, events_per_sec, log_seconds, error_count, buffer_size
+        SELECT snapshot_time, events_per_sec, lag_seconds, error_count, buffer_size
         FROM pipeline_health
         ORDER BY snapshot_time DESC
         LIMIT 1
