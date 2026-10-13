@@ -98,3 +98,13 @@ CREATE TABLE IF NOT EXISTS soc_dashboard.pipeline_health
 )
 ENGINE = MergeTree
 ORDER BY snapshot_time;
+
+-- To avoid alert the same issue by every 30s alert.
+CREATE TABLE detector_state
+(
+    rule_name      String,
+    last_processed DateTime64(3),
+    version        UInt64 DEFAULT 1
+)
+ENGINE = ReplacingMergeTree(version)
+ORDER BY rule_name;
